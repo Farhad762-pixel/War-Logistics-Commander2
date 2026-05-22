@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WAR LOGISTICS COMMANDER — LogSim 2</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#030608;
+  --panel:rgba(3,10,12,.88);
+  --panel2:rgba(9,22,26,.94);
+  --line:rgba(82,255,220,.32);
+  --cyan:#52ffdc;
+  --cyan2:#b7fff3;
+  --red:#ff3d3d;
+  --red2:#ff7777;
+  --green:#64ff8f;
+  --yellow:#ffe46b;
+  --orange:#ff9d38;
+  --blue:#7bbcff;
+  --muted:#9cbab5;
+  --white:#eafffb;
+}
+
+html,body{
+  min-height:100%;
+  background:var(--bg);
+  color:var(--white);
+  font-family:"Courier New",monospace;
+  overflow-x:hidden;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-5;
+  background:
+    radial-gradient(circle at 18% 18%,rgba(255,0,0,.18),transparent 23%),
+    radial-gradient(circle at 82% 88%,rgba(255,110,0,.22),transparent 27%),
+    linear-gradient(rgba(0,0,0,.68),rgba(0,0,0,.94)),
+    url("https://images.unsplash.com/photo-1514924013411-cbf25faa35bb?q=80&w=2070&auto=format&fit=crop");
+  background-size:cover;
+  background-position:center;
+}
+
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:40;
+  pointer-events:none;
+  background:
+    repeating-linear-gradient(to bottom,rgba(255,255,255,.035) 0px,rgba(255,255,255,.035) 1px,transparent 2px,transparent 6px);
+  opacity:.45;
+}
+
+.fire{
+  position:fixed;
+  left:0;
+  bottom:0;
+  width:100%;
+  height:270px;
+  z-index:-4;
+  pointer-events:none;
+  background:linear-gradient(to top,rgba(255,55,0,.72),rgba(255,145,0,.25),transparent);
+  animation:fireGlow 1.3s infinite alternate;
+}
+
+@keyframes fireGlow{from{opacity:.45}to{opacity:1}}
+
+.shake{animation:shake .15s infinite}
+@keyframes shake{
+  0%{transform:translate(1px,1px)}
+  25%{transform:translate(-2px,1px)}
+  50%{transform:translate(2px,-1px)}
+  75%{transform:translate(-1px,2px)}
+  100%{transform:translate(1px,-2px)}
+}
+
+.screen{display:none;min-height:100vh}
+.screen.active{display:block}
+
+/* INTRO */
+.intro{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:30px;
+  text-align:center;
+}
+
+.introCard{
+  max-width:980px;
+  padding:46px;
+  background:rgba(0,0,0,.82);
+  border:1px solid var(--cyan);
+  box-shadow:0 0 42px rgba(82,255,220,.23);
+}
+
+.logo{
+  color:var(--cyan);
+  font-size:52px;
+  letter-spacing:5px;
+  text-shadow:0 0 24px var(--cyan);
+  margin-bottom:10px;
+}
+
+.subtitle{
+  color:var(--red);
+  letter-spacing:4px;
+  margin-bottom:26px;
+  font-size:15px;
+}
+
+.introText{
+  color:#dffff8;
+  font-size:18px;
+  line-height:1.8;
+}
+
+.start{
+  margin-top:34px;
+  padding:16px 44px;
+  border:2px solid var(--cyan);
+  background:rgba(82,255,220,.07);
+  color:var(--cyan);
+  font-size:20px;
+  letter-spacing:3px;
+  font-weight:bold;
+  cursor:pointer;
+  box-shadow:0 0 20px rgba(82,255,220,.25);
+}
+
+.start:hover{background:var(--cyan);color:#001711}
+
+/* GAME */
+.gameWrap{
+  width:96%;
+  max-width:1580px;
+  margin:auto;
+  padding:20px 0 32px;
+}
+
+.top{
+  text-align:center;
+  padding:18px 0;
+}
+
+.top .logo{font-size:38px}
+
+.alertBar{
+  max-width:920px;
+  margin:15px auto 0;
+  padding:12px 15px;
+  border:1px solid var(--red);
+  color:#ff8080;
+  background:rgba(255,0,0,.10);
+  animation:blink 1.05s infinite;
+  font-weight:bold;
+}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  box-shadow:0 0 20px rgba(82,255,220,.09);
+  padding:17px;
+  margin-bottom:16px;
+}
+
+.panelTitle{
+  color:var(--cyan);
+  letter-spacing:2px;
+  margin-bottom:13px;
+  font-weight:bold;
+}
+
+.statusGrid{
+  display:grid;
+  grid-template-columns:repeat(10,1fr);
+  gap:9px;
+}
+
+.status{
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.14);
+  padding:11px;
+  min-height:82px;
+}
+
+.status span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  margin-bottom:7px;
+  letter-spacing:1px;
+}
+
+.status strong{
+  color:#fff5ad;
+  font-size:25px;
+}
+
+.bar{
+  height:7px;
+  margin-top:8px;
+  background:rgba(255,255,255,.12);
+  overflow:hidden;
+}
+
+.fill{
+  height:100%;
+  width:50%;
+  background:var(--cyan);
+  transition:.25s;
+}
+
+.fill.red{background:var(--red)}
+.fill.yellow{background:var(--yellow)}
+.fill.green{background:var(--green)}
+
+.phaseTrack{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+}
+
+.phase{
+  text-align:center;
+  padding:12px 6px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.035);
+  color:#83e8d5;
+  font-size:13px;
+  letter-spacing:1px;
+}
+
+.phase.active{
+  border-color:var(--red);
+  color:white;
+  background:rgba(255,0,0,.27);
+  box-shadow:0 0 18px rgba(255,0,0,.43);
+}
+
+.mainGrid{
+  display:grid;
+  grid-template-columns:1.05fr .95fr;
+  gap:17px;
+}
+
+.commandTitle{
+  color:#ff6969;
+  font-size:24px;
+  margin-bottom:12px;
+  letter-spacing:1px;
+}
+
+.brief{
+  color:#eafffa;
+  line-height:1.65;
+  font-size:17px;
+  margin-bottom:12px;
+}
+
+.missionBox{
+  color:#fff0a8;
+  line-height:1.6;
+  border-left:4px solid var(--yellow);
+  padding-left:12px;
+  margin:13px 0;
+}
+
+.buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  margin-top:14px;
+}
+
+button{
+  font-family:"Courier New",monospace;
+  padding:12px 15px;
+  border:1px solid var(--cyan);
+  background:rgba(82,255,220,.08);
+  color:var(--cyan);
+  font-weight:bold;
+  cursor:pointer;
+  transition:.18s;
+}
+
+button:hover{background:var(--cyan);color:#001711;transform:translateY(-1px)}
+button.red{border-color:var(--red);color:#ff7777;background:rgba(255,0,0,.10)}
+button.red:hover{background:var(--red);color:white}
+button.yellow{border-color:var(--yellow);color:var(--yellow);background:rgba(255,225,104,.08)}
+button.yellow:hover{background:var(--yellow);color:#171200}
+button.green{border-color:var(--green);color:var(--green);background:rgba(100,255,143,.08)}
+button.green:hover{background:var(--green);color:#001b08}
+button.orange{border-color:var(--orange);color:var(--orange);background:rgba(255,157,56,.08)}
+button.orange:hover{background:var(--orange);color:#1a0c00}
+button.blue{border-color:var(--blue);color:var(--blue);background:rgba(123,188,255,.08)}
+button.blue:hover{background:var(--blue);color:#00101f}
+
+.messageBox{
+  min-height:128px;
+  border-left:4px solid var(--red);
+  padding-left:14px;
+  color:#eafffa;
+  line-height:1.65;
+}
+
+.logBox{
+  height:278px;
+  overflow:auto;
+  line-height:1.63;
+  color:#cffff5;
+  font-size:14px;
+}
+
+.good{color:#80ffa4}
+.bad{color:#ff7777}
+.warn{color:#ffe17e}
+.info{color:#87d9ff}
+
+.zoneGrid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+
+.zone{
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.14);
+  padding:12px;
+  line-height:1.45;
+}
+
+.zone h3{
+  color:var(--cyan);
+  font-size:15px;
+  margin-bottom:6px;
+}
+
+.zone strong{color:#fff5ad}
+
+.selectedZone{
+  border-color:var(--red);
+  box-shadow:0 0 15px rgba(255,0,0,.32);
+}
+
+/* MAP */
+.map{
+  position:relative;
+  height:500px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.20);
+  background:
+    linear-gradient(rgba(0,0,0,.38),rgba(0,0,0,.82)),
+    url("https://images.unsplash.com/photo-1508615070457-7baeba4003ab?q=80&w=2070&auto=format&fit=crop");
+  background-size:cover;
+  background-position:center;
+}
+
+.mapGrid{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(rgba(82,255,220,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(82,255,220,.07) 1px,transparent 1px);
+  background-size:45px 45px;
+}
+
+.signal{
+  position:absolute;
+  top:14px;
+  left:14px;
+  border:1px solid var(--red);
+  color:#ff7777;
+  padding:10px 12px;
+  background:rgba(0,0,0,.85);
+  animation:blink 1s infinite;
+  z-index:3;
+}
+
+.mapUnit{
+  position:absolute;
+  padding:9px 11px;
+  background:rgba(0,0,0,.83);
+  border:1px solid rgba(255,255,255,.35);
+  font-weight:bold;
+  z-index:3;
+}
+
+.base{left:7%;bottom:45px;border-color:var(--cyan)}
+.alpha{right:9%;bottom:70px;border-color:var(--green)}
+.bravo{right:22%;top:165px;border-color:var(--yellow)}
+.charlie{right:8%;top:92px;border-color:var(--orange)}
+.enemy{left:52%;top:105px;border-color:var(--red)}
+.heli{left:40%;top:76px;border-color:var(--cyan);animation:fly 2.7s infinite alternate}
+.convoy{left:31%;bottom:50px;border-color:var(--yellow)}
+
+@keyframes fly{from{transform:translateY(0)}to{transform:translateY(-24px)}}
+
+.convoy.runAlpha{animation:runAlpha 1.7s ease-in-out}
+.convoy.runBravo{animation:runBravo 1.7s ease-in-out}
+.convoy.runCharlie{animation:runCharlie 1.7s ease-in-out}
+
+@keyframes runAlpha{0%{left:12%;bottom:50px}50%{left:48%;bottom:85px}100%{left:78%;bottom:70px}}
+@keyframes runBravo{0%{left:12%;bottom:50px}50%{left:50%;bottom:180px}100%{left:67%;top:165px}}
+@keyframes runCharlie{0%{left:12%;bottom:50px}50%{left:48%;top:125px}100%{left:80%;top:92px}}
+
+.explosion{
+  position:absolute;
+  right:30%;
+  bottom:120px;
+  font-size:62px;
+  animation:boom .84s infinite alternate;
+  z-index:2;
+}
+
+@keyframes boom{from{transform:scale(.75);opacity:.42}to{transform:scale(1.34);opacity:1}}
+
+.weather{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  background:radial-gradient(circle,rgba(255,255,255,.22),transparent 60%);
+  transition:.25s;
+  pointer-events:none;
+}
+.weather.active{opacity:1}
+
+@media(max-width:1100px){
+  .mainGrid{grid-template-columns:1fr}
+  .statusGrid{grid-template-columns:repeat(2,1fr)}
+  .phaseTrack{grid-template-columns:1fr}
+  .zoneGrid{grid-template-columns:1fr}
+  .logo{font-size:34px}
+}
+</style>
+</head>
+
+<body>
+<div class="fire"></div>
+
+<section class="screen active intro" id="introScreen">
+  <div class="introCard">
+    <div class="logo">WAR LOGISTICS COMMANDER</div>
+    <div class="subtitle">LOGSIM 2 — FRONTLINE SUPPLY CAMPAIGN</div>
+    <div class="introText">
+      You are the logistics commander during a fictional modern conflict.<br>
+      Your mission is to keep multiple frontlines supplied while the enemy attacks routes and depots.<br><br>
+      Manage <b>Food, Fuel, Ammunition, Medical Kits, Budget, Morale, Base Health, Convoy Health, and Intelligence</b>.<br>
+      Choose <b>which frontline receives supplies, how cargo is stored, what route is used, and what transport method is deployed.</b><br><br>
+      Survive <b>6 operations</b> and prevent supply chain collapse.
+    </div>
+    <button class="start" onclick="startGame()">▶ START LOGSIM 2</button>
+  </div>
+</section>
+
+<section class="screen" id="gameScreen">
+  <div class="gameWrap">
+    <div class="top">
+      <div class="logo">WAR LOGISTICS COMMANDER</div>
+      <div class="subtitle">LOGSIM 2 — TACTICAL SUPPLY OPERATIONS</div>
+      <div class="alertBar" id="alertBar">🚨 WARZONE LIVE — MULTIPLE FRONTLINES REQUESTING SUPPORT 🚨</div>
+    </div>
+
+    <div class="panel">
+      <div class="statusGrid">
+        <div class="status"><span>FOOD</span><strong id="food">50</strong><div class="bar"><div id="foodBar" class="fill"></div></div></div>
+        <div class="status"><span>FUEL</span><strong id="fuel">50</strong><div class="bar"><div id="fuelBar" class="fill"></div></div></div>
+        <div class="status"><span>AMMO</span><strong id="ammo">50</strong><div class="bar"><div id="ammoBar" class="fill"></div></div></div>
+        <div class="status"><span>MEDICAL</span><strong id="medical">50</strong><div class="bar"><div id="medicalBar" class="fill"></div></div></div>
+        <div class="status"><span>BUDGET</span><strong id="budget">120</strong><div class="bar"><div id="budgetBar" class="fill yellow"></div></div></div>
+        <div class="status"><span>MORALE</span><strong id="morale">75</strong><div class="bar"><div id="moraleBar" class="fill green"></div></div></div>
+        <div class="status"><span>BASE</span><strong id="base">100</strong><div class="bar"><div id="baseBar" class="fill"></div></div></div>
+        <div class="status"><span>INTEL</span><strong id="intel">55</strong><div class="bar"><div id="intelBar" class="fill"></div></div></div>
+        <div class="status"><span>CONVOY</span><strong id="convoy">100</strong><div class="bar"><div id="convoyBar" class="fill"></div></div></div>
+        <div class="status"><span>OP</span><strong id="round">1/6</strong><div class="bar"><div id="roundBar" class="fill green"></div></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="phaseTrack">
+        <div class="phase active" id="phase1">SUPPLY</div>
+        <div class="phase" id="phase2">DEPOT</div>
+        <div class="phase" id="phase3">ROUTE</div>
+        <div class="phase" id="phase4">CONVOY</div>
+        <div class="phase" id="phase5">REPORT</div>
+      </div>
+    </div>
+
+    <div class="mainGrid">
+      <div>
+        <div class="panel">
+          <div class="commandTitle" id="phaseTitle">SUPPLY CONTRACT</div>
+          <div class="brief" id="briefText">Frontline demand is changing. Acquire supplies and choose target priority.</div>
+          <div class="missionBox" id="missionText"></div>
+          <div class="buttons" id="buttonArea"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panelTitle">FRONTLINE STATUS</div>
+          <div class="zoneGrid">
+            <div class="zone" id="zoneAlpha">
+              <h3>ALPHA RIDGE</h3>
+              Threat: <strong id="alphaThreat">0</strong><br>
+              Demand: <span id="alphaDemand"></span><br>
+              Stability: <strong id="alphaStab">70</strong>
+            </div>
+            <div class="zone" id="zoneBravo">
+              <h3>BRAVO CITY</h3>
+              Threat: <strong id="bravoThreat">0</strong><br>
+              Demand: <span id="bravoDemand"></span><br>
+              Stability: <strong id="bravoStab">70</strong>
+            </div>
+            <div class="zone" id="zoneCharlie">
+              <h3>CHARLIE PORT</h3>
+              Threat: <strong id="charlieThreat">0</strong><br>
+              Demand: <span id="charlieDemand"></span><br>
+              Stability: <strong id="charlieStab">70</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panelTitle">MISSION MESSAGE</div>
+          <div class="messageBox" id="messageBox">Command terminal online.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panelTitle">OPERATIONS LOG</div>
+          <div class="logBox" id="logBox">System initialized.</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="panelTitle">TACTICAL MAP</div>
+          <div class="map">
+            <div class="mapGrid"></div>
+            <div class="signal" id="signal">⚠ ENEMY SCAN ACTIVE</div>
+            <div class="mapUnit base">🏚 BASE DEPOT</div>
+            <div class="mapUnit convoy" id="convoyIcon">🚚 CONVOY</div>
+            <div class="mapUnit alpha">🪖 ALPHA RIDGE</div>
+            <div class="mapUnit bravo">🏙 BRAVO CITY</div>
+            <div class="mapUnit charlie">⚓ CHARLIE PORT</div>
+            <div class="mapUnit enemy">☠ ENEMY ZONE</div>
+            <div class="mapUnit heli">🚁 AIR SUPPORT</div>
+            <div class="explosion">💥</div>
+            <div class="weather" id="weather"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+let food=50, fuel=50, ammo=50, medical=50, budget=120, morale=75, base=100, intel=55, convoy=100;
+let round=1, maxRound=6, phase=1, gameOver=false;
+
+let zones={
+  alpha:{name:"Alpha Ridge", threat:35, stab:70, demand:{}},
+  bravo:{name:"Bravo City", threat:35, stab:70, demand:{}},
+  charlie:{name:"Charlie Port", threat:35, stab:70, demand:{}}
+};
+
+let target="";
+let depot="";
+let route="";
+let transport="";
+let depotProtection=0, routeRisk=0, routeFuel=0, routeSpeed=0, transportRisk=0, transportFuel=0, transportCost=0, transportPower=0;
+let deliveredRating="PENDING";
+
+function startGame(){
+  document.getElementById("introScreen").classList.remove("active");
+  document.getElementById("gameScreen").classList.add("active");
+  newOperation();
+  renderSupply();
+  updateUI();
+  addLog("LogSim 2 opened. Operation 1 active.","warn");
+}
+
+function randomDemand(min,max){return min+Math.floor(Math.random()*(max-min+1))}
+function newOperation(){
+  zones.alpha.threat=randomDemand(25,65);
+  zones.bravo.threat=randomDemand(20,70);
+  zones.charlie.threat=randomDemand(25,75);
+
+  zones.alpha.demand={food:randomDemand(10,25), fuel:randomDemand(8,20), ammo:randomDemand(12,28), medical:randomDemand(7,18)};
+  zones.bravo.demand={food:randomDemand(14,30), fuel:randomDemand(10,24), ammo:randomDemand(10,25), medical:randomDemand(8,20)};
+  zones.charlie.demand={food:randomDemand(12,26), fuel:randomDemand(12,26), ammo:randomDemand(14,30), medical:randomDemand(6,16)};
+}
+
+function clamp(){
+  food=Math.max(0,food); fuel=Math.max(0,fuel); ammo=Math.max(0,ammo); medical=Math.max(0,medical);
+  budget=Math.max(0,budget); morale=Math.max(0,Math.min(100,morale)); base=Math.max(0,Math.min(100,base));
+  intel=Math.max(0,Math.min(100,intel)); convoy=Math.max(0,Math.min(100,convoy));
+  zones.alpha.stab=Math.max(0,Math.min(100,zones.alpha.stab));
+  zones.bravo.stab=Math.max(0,Math.min(100,zones.bravo.stab));
+  zones.charlie.stab=Math.max(0,Math.min(100,zones.charlie.stab));
+}
+
+function updateBar(id,value,max=100){
+  let el=document.getElementById(id);
+  let pct=Math.max(0,Math.min(100,(value/max)*100));
+  el.style.width=pct+"%";
+  el.classList.remove("red","yellow","green");
+  if(pct<30) el.classList.add("red");
+  else if(pct<60) el.classList.add("yellow");
+  else el.classList.add("green");
+}
+
+function demandText(z){
+  return "F"+z.demand.food+" Fu"+z.demand.fuel+" A"+z.demand.ammo+" M"+z.demand.medical;
+}
+
+function updateZoneHighlight(){
+  document.getElementById("zoneAlpha").classList.remove("selectedZone");
+  document.getElementById("zoneBravo").classList.remove("selectedZone");
+  document.getElementById("zoneCharlie").classList.remove("selectedZone");
+  if(target==="alpha") document.getElementById("zoneAlpha").classList.add("selectedZone");
+  if(target==="bravo") document.getElementById("zoneBravo").classList.add("selectedZone");
+  if(target==="charlie") document.getElementById("zoneCharlie").classList.add("selectedZone");
+}
+
+function updateUI(){
+  clamp();
+  document.getElementById("food").innerText=food;
+  document.getElementById("fuel").innerText=fuel;
+  document.getElementById("ammo").innerText=ammo;
+  document.getElementById("medical").innerText=medical;
+  document.getElementById("budget").innerText=budget;
+  document.getElementById("morale").innerText=morale;
+  document.getElementById("base").innerText=base;
+  document.getElementById("intel").innerText=intel;
+  document.getElementById("convoy").innerText=convoy;
+  document.getElementById("round").innerText=round+"/"+maxRound;
+
+  updateBar("foodBar",food,140); updateBar("fuelBar",fuel,140); updateBar("ammoBar",ammo,140); updateBar("medicalBar",medical,140);
+  updateBar("budgetBar",budget,160); updateBar("moraleBar",morale,100); updateBar("baseBar",base,100); updateBar("intelBar",intel,100);
+  updateBar("convoyBar",convoy,100); updateBar("roundBar",round,maxRound);
+
+  for(let i=1;i<=5;i++) document.getElementById("phase"+i).classList.remove("active");
+  document.getElementById("phase"+phase).classList.add("active");
+
+  document.getElementById("alphaThreat").innerText=zones.alpha.threat;
+  document.getElementById("bravoThreat").innerText=zones.bravo.threat;
+  document.getElementById("charlieThreat").innerText=zones.charlie.threat;
+  document.getElementById("alphaDemand").innerText=demandText(zones.alpha);
+  document.getElementById("bravoDemand").innerText=demandText(zones.bravo);
+  document.getElementById("charlieDemand").innerText=demandText(zones.charlie);
+  document.getElementById("alphaStab").innerText=zones.alpha.stab;
+  document.getElementById("bravoStab").innerText=zones.bravo.stab;
+  document.getElementById("charlieStab").innerText=zones.charlie.stab;
+  updateZoneHighlight();
+}
+
+function msg(t){document.getElementById("messageBox").innerHTML=t}
+function mission(t){document.getElementById("missionText").innerHTML=t}
+function addLog(t,type="info"){
+  let cls=type==="good"?"good":type==="bad"?"bad":type==="warn"?"warn":"info";
+  document.getElementById("logBox").innerHTML="<div class='"+cls+"'>▸ "+t+"</div>"+document.getElementById("logBox").innerHTML;
+}
+
+function alarm(t){
+  document.getElementById("signal").innerHTML=t;
+  document.body.classList.add("shake");
+  document.getElementById("weather").classList.add("active");
+  setTimeout(()=>{
+    document.getElementById("signal").innerHTML="⚠ ENEMY SCAN ACTIVE";
+    document.body.classList.remove("shake");
+    document.getElementById("weather").classList.remove("active");
+  },2200);
+}
+
+/* PHASE 1 */
+function renderSupply(){
+  phase=1; target=""; depot=""; route=""; transport="";
+  depotProtection=0; routeRisk=0; routeFuel=0; routeSpeed=0; transportRisk=0; transportFuel=0; transportCost=0; transportPower=0;
+  deliveredRating="PENDING";
+
+  document.getElementById("phaseTitle").innerText="SUPPLY CONTRACT";
+  document.getElementById("briefText").innerText="Frontline demand is changing. Acquire supplies and choose target priority.";
+  mission("Select supplies and target zone. Higher threat zones need stronger support.");
+  document.getElementById("buttonArea").innerHTML=
+    "<button onclick=\"buy('food')\">FOOD +12 ($10)</button>"+
+    "<button onclick=\"buy('fuel')\">FUEL +12 ($10)</button>"+
+    "<button onclick=\"buy('ammo')\">AMMO +12 ($10)</button>"+
+    "<button onclick=\"buy('medical')\">MEDICAL +12 ($10)</button>"+
+    "<button class='blue' onclick=\"selectTarget('alpha')\">Target Alpha</button>"+
+    "<button class='yellow' onclick=\"selectTarget('bravo')\">Target Bravo</button>"+
+    "<button class='orange' onclick=\"selectTarget('charlie')\">Target Charlie</button>"+
+    "<button class='green' onclick='renderDepot()'>Confirm Load</button>";
+  msg("Supply office online. Choose target and load resources.");
+  updateUI();
+}
+
+function buy(type){
+  if(gameOver||phase!==1)return;
+  if(budget<10){msg("Budget empty. Confirm current load.");return;}
+  if(type==="food"){food+=12; addLog("Food stock purchased."); msg("Food crates moved to loading bay.")}
+  if(type==="fuel"){fuel+=12; addLog("Fuel stock purchased."); msg("Fuel drums moved to loading bay.")}
+  if(type==="ammo"){ammo+=12; addLog("Ammo stock purchased."); msg("Ammo cases moved to secure rack.")}
+  if(type==="medical"){medical+=12; addLog("Medical stock purchased."); msg("Medical kits moved to triage box.")}
+  budget-=10;
+  updateUI();
+}
+
+function selectTarget(z){
+  target=z;
+  msg("Target selected: "+zones[z].name+". Threat level: "+zones[z].threat+".");
+  addLog("Target priority set to "+zones[z].name+".","warn");
+  updateUI();
+}
+
+/* PHASE 2 */
+function renderDepot(){
+  if(target===""){msg("Choose a target frontline first.");return;}
+  phase=2;
+  document.getElementById("phaseTitle").innerText="DEPOT SECURITY";
+  document.getElementById("briefText").innerText="Choose how the cargo is protected before convoy leaves.";
+  mission("Enemy drone pressure is active. Weak storage can lose cargo before launch.");
+  document.getElementById("buttonArea").innerHTML=
+    "<button onclick=\"selectDepot('Field Depot')\">Field Depot</button>"+
+    "<button class='yellow' onclick=\"selectDepot('Reinforced Warehouse')\">Reinforced Warehouse ($20)</button>"+
+    "<button class='green' onclick=\"selectDepot('Underground Bunker')\">Underground Bunker ($35)</button>"+
+    "<button class='green' onclick='renderRoute()'>Lock Depot</button>";
+  msg("Depot security decision needed.");
+  addLog("Depot phase opened.","warn");
+  updateUI();
+}
+
+function selectDepot(d){
+  if(gameOver||phase!==2)return;
+  if(d==="Field Depot"){depot=d; depotProtection=.12; msg("Field Depot chosen. Fast but vulnerable.")}
+  if(d==="Reinforced Warehouse"){
+    if(budget<20){msg("Not enough budget.");return;}
+    budget-=20; depot=d; depotProtection=.42; msg("Reinforced Warehouse chosen. Medium protection.");
+  }
+  if(d==="Underground Bunker"){
+    if(budget<35){msg("Not enough budget.");return;}
+    budget-=35; depot=d; depotProtection=.70; msg("Underground Bunker chosen. Strong protection.");
+  }
+  addLog("Depot selected: "+depot+".");
+  updateUI();
+}
+
+/* PHASE 3 */
+function renderRoute(){
+  if(depot===""){msg("Select depot first.");return;}
+  phase=3;
+  document.getElementById("phaseTitle").innerText="ROUTE COMMAND";
+  document.getElementById("briefText").innerText="Choose route and transport package for the selected frontline.";
+  mission("Target: <b>"+zones[target].name+"</b>. Threat: <b>"+zones[target].threat+"</b>.");
+  document.getElementById("buttonArea").innerHTML=
+    "<button class='green' onclick=\"selectRoute('Safe Road')\">Safe Road</button>"+
+    "<button class='yellow' onclick=\"selectRoute('Fast Highway')\">Fast Highway</button>"+
+    "<button class='red' onclick=\"selectRoute('Hot Zone Shortcut')\">Hot Zone Shortcut</button>"+
+    "<button onclick=\"selectTransport('Truck Convoy')\">Truck Convoy</button>"+
+    "<button class='yellow' onclick=\"selectTransport('Armored Convoy')\">Armored Convoy ($20)</button>"+
+    "<button class='green' onclick=\"selectTransport('Helicopter Drop')\">Helicopter Drop ($30)</button>"+
+    "<button class='blue' onclick=\"selectTransport('Drone Scout Support')\">Drone Scout Support ($15)</button>"+
+    "<button class='green' onclick='renderConvoy()'>Deploy Plan</button>";
+  msg("Route command ready. Choose one route and one transport method.");
+  addLog("Route command opened.","warn");
+  updateUI();
+}
+
+function selectRoute(r){
+  if(gameOver||phase!==3)return;
+  route=r;
+  if(r==="Safe Road"){routeRisk=.15; routeFuel=18; routeSpeed=4; msg("Safe Road selected. Lower ambush risk but slow.")}
+  if(r==="Fast Highway"){routeRisk=.32; routeFuel=20; routeSpeed=7; msg("Fast Highway selected. Medium risk, good speed.")}
+  if(r==="Hot Zone Shortcut"){routeRisk=.55; routeFuel=12; routeSpeed=10; msg("Hot Zone Shortcut selected. High ambush risk, fastest.")}
+  addLog("Route selected: "+route+".");
+}
+
+function selectTransport(t){
+  if(gameOver||phase!==3)return;
+  transport=t;
+  if(t==="Truck Convoy"){transportCost=0; transportRisk=.08; transportFuel=0; transportPower=5; msg("Truck Convoy selected. Cheap but exposed.")}
+  if(t==="Armored Convoy"){transportCost=20; transportRisk=-.15; transportFuel=10; transportPower=8; msg("Armored Convoy selected. Safer but expensive.")}
+  if(t==="Helicopter Drop"){transportCost=30; transportRisk=-.12; transportFuel=22; transportPower=9; msg("Helicopter Drop selected. Fast and strong but fuel heavy.")}
+  if(t==="Drone Scout Support"){transportCost=15; transportRisk=-.22; transportFuel=6; transportPower=6; intel+=10; msg("Drone Scout Support selected. Better intel and lower ambush risk.")}
+  addLog("Transport package selected: "+transport+".");
+  updateUI();
+}
+
+function renderConvoy(){
+  if(route===""||transport===""){msg("Choose route and transport first.");return;}
+  if(budget<transportCost){msg("Not enough budget for this transport package.");return;}
+  budget-=transportCost;
+  phase=4;
+  document.getElementById("phaseTitle").innerText="CONVOY RUN";
+  document.getElementById("briefText").innerText="Convoy is ready. Launch through the active combat zone.";
+  mission("Target: "+zones[target].name+" | Route: "+route+" | Transport: "+transport);
+  document.getElementById("buttonArea").innerHTML="<button class='red' onclick='launchConvoy()'>Launch Convoy</button>";
+  msg("Convoy waiting at base gate.");
+  addLog("Convoy ready.","warn");
+  updateUI();
+}
+
+/* PHASE 4 */
+function launchConvoy(){
+  if(gameOver||phase!==4)return;
+
+  let icon=document.getElementById("convoyIcon");
+  icon.classList.remove("runAlpha","runBravo","runCharlie");
+  void icon.offsetWidth;
+  if(target==="alpha") icon.classList.add("runAlpha");
+  if(target==="bravo") icon.classList.add("runBravo");
+  if(target==="charlie") icon.classList.add("runCharlie");
+
+  let z=zones[target];
+  let match=0;
+  if(food>=z.demand.food) match++;
+  if(fuel>=z.demand.fuel) match++;
+  if(ammo>=z.demand.ammo) match++;
+  if(medical>=z.demand.medical) match++;
+
+  food-=Math.ceil(z.demand.food*.60);
+  fuel-=routeFuel+transportFuel;
+  ammo-=Math.ceil(z.demand.ammo*.62);
+  medical-=Math.ceil(z.demand.medical*.55);
+
+  if(Math.random() > depotProtection + .48){
+    base-=14; food-=6; fuel-=6;
+    alarm("🚨 DEPOT STRUCK");
+    addLog("Enemy drone damaged depot before convoy exit.","bad");
+  }
+
+  let threatModifier=z.threat/140;
+  let intelModifier=(100-intel)/250;
+  let finalRisk=Math.max(.05, routeRisk+transportRisk+threatModifier+intelModifier);
+  let roll=Math.random();
+
+  if(roll<finalRisk){
+    convoy-=22; morale-=18; z.stab-=18; ammo-=10; medical-=7;
+    deliveredRating="DAMAGED";
+    alarm("💥 CONVOY AMBUSHED");
+    msg("Convoy hit near "+z.name+". Cargo reached partly, losses were heavy.");
+    addLog("Convoy ambushed near "+z.name+".","bad");
+  }else if(roll<finalRisk+.22){
+    convoy-=8; morale-=6; z.stab-=7; fuel-=7;
+    deliveredRating="DELAYED";
+    alarm("🌧 ROUTE DELAY");
+    msg("Bad weather and damaged road delayed delivery to "+z.name+".");
+    addLog("Route delay hit convoy.","warn");
+  }else{
+    morale+=10+match; z.stab+=12+transportPower;
+    deliveredRating="SUCCESS";
+    msg("Convoy delivered cargo to "+z.name+". Frontline stability improved.");
+    addLog("Delivery success to "+z.name+".","good");
+  }
+
+  if(match<3){
+    morale-=8;
+    z.stab-=8;
+    addLog("Cargo package did not fully match frontline demand.","warn");
+  }
+
+  intel-=5;
+  updateUI();
+  checkGame();
+  if(!gameOver) renderReport();
+}
+
+/* PHASE 5 */
+function renderReport(){
+  phase=5;
+  document.getElementById("phaseTitle").innerText="AFTER-ACTION REPORT";
+  document.getElementById("briefText").innerText="Command report received. Review outcome before next operation.";
+  mission("Delivery rating: <b>"+deliveredRating+"</b>");
+  document.getElementById("buttonArea").innerHTML=
+    "<button onclick='openReport()'>Open Report</button>"+
+    "<button class='green' onclick='nextOperation()'>Next Operation</button>";
+  addLog("After-action report ready.","warn");
+  updateUI();
+}
+
+function openReport(){
+  let z=zones[target];
+  let report="<b>OPERATION "+round+" REPORT</b><br><br>";
+  report+="Target: "+z.name+"<br>";
+  report+="Depot: "+depot+"<br>";
+  report+="Route: "+route+"<br>";
+  report+="Transport: "+transport+"<br>";
+  report+="Result: "+deliveredRating+"<br>";
+  report+="Frontline Stability: "+z.stab+"<br><br>";
+
+  if(deliveredRating==="SUCCESS") report+="Command assessment: strong delivery. Current logistics chain worked.";
+  else if(deliveredRating==="DELAYED") report+="Command assessment: delivery survived but route planning needs improvement.";
+  else report+="Command assessment: serious supply risk. Need safer route, stronger depot, or more intel.";
+
+  msg(report);
+  addLog("Report reviewed.","info");
+}
+
+function nextOperation(){
+  if(gameOver||phase!==5)return;
+  if(round>=maxRound){winGame();return;}
+
+  round++;
+  budget+=45;
+  food-=5; fuel-=5; ammo-=5; medical-=3;
+  convoy=Math.min(100,convoy+8);
+  intel=Math.min(100,intel+8);
+
+  Object.keys(zones).forEach(k=>{
+    if(k!==target) zones[k].stab-=randomDemand(3,9);
+  });
+
+  newOperation();
+  renderSupply();
+  msg("New operation started. Frontline situation changed.");
+  addLog("Operation "+round+" opened.","warn");
+  updateUI();
+  checkGame();
+}
+
+/* END */
+function checkGame(){
+  if(food<=0)return loseGame("Food supply collapsed.");
+  if(fuel<=0)return loseGame("Fuel supply collapsed. Convoys cannot move.");
+  if(ammo<=0)return loseGame("Ammo supply collapsed. Frontline cannot defend.");
+  if(medical<=0)return loseGame("Medical supply collapsed.");
+  if(morale<=0)return loseGame("Troop morale collapsed.");
+  if(base<=0)return loseGame("Base depot destroyed.");
+  if(convoy<=0)return loseGame("Convoy fleet destroyed.");
+  if(zones.alpha.stab<=0)return loseGame("Alpha Ridge collapsed.");
+  if(zones.bravo.stab<=0)return loseGame("Bravo City collapsed.");
+  if(zones.charlie.stab<=0)return loseGame("Charlie Port collapsed.");
+}
+
+function loseGame(reason){
+  gameOver=true;
+  alarm("☠ MISSION FAILED");
+  msg("<b>MISSION FAILED</b><br><br>"+reason);
+  document.getElementById("buttonArea").innerHTML="<button class='red' onclick='location.reload()'>Restart Simulation</button>";
+  addLog("Mission failed: "+reason,"bad");
+}
+
+function winGame(){
+  gameOver=true;
+  let avg=Math.round((zones.alpha.stab+zones.bravo.stab+zones.charlie.stab)/3);
+  msg("<b>MISSION SUCCESS</b><br><br>You completed all 6 operations.<br>Average frontline stability: "+avg+"<br>Final morale: "+morale);
+  document.getElementById("buttonArea").innerHTML="<button class='green' onclick='location.reload()'>Play Again</button>";
+  addLog("All operations completed. Mission success.","good");
+}
+</script>
+</body>
+</html>
